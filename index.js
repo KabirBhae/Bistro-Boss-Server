@@ -43,6 +43,10 @@ async function run() {
 		});
 
 		//users related
+		app.get("/users", async (req, res) => {
+			const result = await usersCollection.find().toArray();
+			res.send(result);
+		});
 		app.post("/users", async (req, res) => {
 			const user = req.body;
 			//checking if user already exists
@@ -53,6 +57,24 @@ async function run() {
 			}
 			//if not, then add the user to DB
 			const result = await usersCollection.insertOne(user);
+			res.send(result);
+		});
+		app.patch("/users/admin/:id", async (req, res) => {
+			const id = req.params.id;
+			const filter = { _id: new ObjectId(id) };
+			const updatedDoc = {
+				$set: {
+					role: "admin",
+				},
+			};
+			const result = await usersCollection.updateOne(filter, updatedDoc);
+			res.send(result);
+		});
+
+		app.delete("/users/:id", async (req, res) => {
+			const id = req.params.id;
+			const query = { _id: new ObjectId(id) };
+			const result = await usersCollection.deleteOne(query);
 			res.send(result);
 		});
 
