@@ -7,6 +7,9 @@ const cors = require("cors");
 const app = express();
 const port = process.env.PORT || 5000;
 
+//pyament
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+
 //default middlewares
 app.use(cors());
 app.use(express.json());
@@ -185,6 +188,25 @@ async function run() {
 			const query = { _id: new ObjectId(cartID) };
 			const result = await cartsCollection.deleteOne(query);
 			res.send(result);
+		});
+
+		//payment related
+
+		// uses 'price' sent by client to create a payment intent
+		//sends client secret back to the client
+		app.post("/create-payment-intent", async (req, res) => {
+			const { price } = req.body;
+			//need to parseInt and multiply by 100 as required by stripe
+			const amount = parseInt(price * 100);
+
+			const paymentIntent = await stripe.paymentIntents.create({
+				amount: amount,
+				currency: "usd",
+				//make sure to use this key:val pair
+				payment_method_types: ["card"],
+			});
+
+			res.send({clientSecret: paymentIntent.client_secret});
 		});
 
 		// Send a ping to confirm a successful connection
