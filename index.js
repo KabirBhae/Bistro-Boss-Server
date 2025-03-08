@@ -35,6 +35,7 @@ async function run() {
 		const menuCollection = client.db(dbName).collection("menu");
 		const reviewsCollection = client.db(dbName).collection("reviews");
 		const cartsCollection = client.db(dbName).collection("carts");
+		const paymentCollection = client.db(dbName).collection("payments")
 
 		app.get("/reviews", async (req, res) => {
 			const result = await reviewsCollection.find().toArray();
@@ -207,6 +208,22 @@ async function run() {
 			});
 
 			res.send({clientSecret: paymentIntent.client_secret});
+		});
+
+		//store payment info in DB
+		app.post("/payments", async (req, res) => {
+			const payment = req.body;
+			const paymentResult = await paymentCollection.insertOne(payment);
+
+			// insertion done, now delete each item from the cart
+			const query = {
+				_id: {
+					$in: payment.cartIds.map(id => new ObjectId(id)),
+				},
+			};
+			const deleteResult = await cartsCollection.deleteMany(query);
+
+			res.send({ paymentResult, deleteResult });
 		});
 
 		// Send a ping to confirm a successful connection
