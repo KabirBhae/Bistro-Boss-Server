@@ -33,11 +33,6 @@ async function run() {
 		const reviewsCollection = client.db(dbName).collection("reviews");
 		const cartsCollection = client.db(dbName).collection("carts");
 
-		app.get("/menu", async (req, res) => {
-			const result = await menuCollection.find().toArray();
-			res.send(result);
-		});
-
 		app.get("/reviews", async (req, res) => {
 			const result = await reviewsCollection.find().toArray();
 			res.send(result);
@@ -75,6 +70,17 @@ async function run() {
 			res.send({ token });
 		});
 
+		//menu related
+		app.get("/menu", async (req, res) => {
+			const result = await menuCollection.find().toArray();
+			res.send(result);
+		});
+		app.post("/menu", verifyToken, verifyAdmin, async (req, res) => {
+			const item = req.body;
+			const result = await menuCollection.insertOne(item);
+			res.send(result);
+		});
+
 		//users related api
 
 		//check whether a user is an admin
@@ -94,7 +100,7 @@ async function run() {
 			res.send({ admin });
 		});
 		//only admin can see all users
-		app.get("/users", verifyToken,verifyAdmin, async (req, res) => {
+		app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
 			const result = await usersCollection.find().toArray();
 			res.send(result);
 		});
@@ -111,7 +117,7 @@ async function run() {
 			res.send(result);
 		});
 		//update an user to admin role
-		app.patch("/users/admin/:id", verifyToken,verifyAdmin, async (req, res) => {
+		app.patch("/users/admin/:id", verifyToken, verifyAdmin, async (req, res) => {
 			const id = req.params.id;
 			const filter = { _id: new ObjectId(id) };
 			const updatedDoc = {
@@ -123,7 +129,7 @@ async function run() {
 			res.send(result);
 		});
 
-		app.delete("/users/:id", verifyToken,verifyAdmin, async (req, res) => {
+		app.delete("/users/:id", verifyToken, verifyAdmin, async (req, res) => {
 			const id = req.params.id;
 			const query = { _id: new ObjectId(id) };
 			const result = await usersCollection.deleteOne(query);
