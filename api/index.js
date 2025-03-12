@@ -14,7 +14,7 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 app.use(cors());
 app.use(express.json());
 
-const uri = `mongodb+srv://${process.env.DB_User}:${process.env.DB_PASSWORD}@coffee.2a0ov.mongodb.net/?retryWrites=true&w=majority&appName=Coffee`;
+const uri = process.env.MONGODB_URI;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -27,7 +27,7 @@ const client = new MongoClient(uri, {
 
 async function run() {
 	try {
-		await client.connect();
+		// await client.connect();
 
 		const dbName = "bistroDB";
 
@@ -35,7 +35,11 @@ async function run() {
 		const menuCollection = client.db(dbName).collection("menu");
 		const reviewsCollection = client.db(dbName).collection("reviews");
 		const cartsCollection = client.db(dbName).collection("carts");
-		const paymentCollection = client.db(dbName).collection("payments")
+		const paymentCollection = client.db(dbName).collection("payments");
+
+		app.get("/", (req, res) => {
+			res.send("Server is running");
+		});
 
 		app.get("/reviews", async (req, res) => {
 			const result = await reviewsCollection.find().toArray();
@@ -207,7 +211,7 @@ async function run() {
 				payment_method_types: ["card"],
 			});
 
-			res.send({clientSecret: paymentIntent.client_secret});
+			res.send({ clientSecret: paymentIntent.client_secret });
 		});
 		//show paument history to client
 		app.get("/payments/:email", verifyToken, async (req, res) => {
@@ -235,8 +239,8 @@ async function run() {
 		});
 
 		// Send a ping to confirm a successful connection
-		await client.db("admin").command({ ping: 1 });
-		console.log("Pinged your deployment. You successfully connected to MongoDB!");
+		// await client.db("admin").command({ ping: 1 });
+		// console.log("Pinged your deployment. You successfully connected to MongoDB!");
 	} finally {
 		// Ensures that the client will close when you finish/error
 		// await client.close();
