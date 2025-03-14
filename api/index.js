@@ -38,7 +38,7 @@ async function run() {
 		const paymentCollection = client.db(dbName).collection("payments");
 
 		app.get("/", (req, res) => {
-			res.send("Server is running");
+			res.send("Server is running very fast");
 		});
 
 		app.get("/reviews", async (req, res) => {
@@ -224,7 +224,8 @@ async function run() {
 		});
 		//store payment info in DB
 		app.post("/payments", async (req, res) => {
-			const payment = req.body;
+			const updatedMenuItemIds = req.body.menuItemIds.map(id => new ObjectId(id));
+			const payment = { ...req.body, menuItemIds: updatedMenuItemIds };
 			const paymentResult = await paymentCollection.insertOne(payment);
 
 			// insertion done, now delete each item from the cart
@@ -236,6 +237,77 @@ async function run() {
 			const deleteResult = await cartsCollection.deleteMany(query);
 
 			res.send({ paymentResult, deleteResult });
+		});
+		//admin home
+		app.get("/admin-stats", verifyToken, verifyAdmin, async (req, res) => {
+			const users = await usersCollection.estimatedDocumentCount();
+			const menuItems = await menuCollection.estimatedDocumentCount();
+			const orders = await paymentCollection.estimatedDocumentCount();
+
+			// this is not the best way
+			// const payments = await paymentCollection.find().toArray();
+			// const revenue = payments.reduce((total, payment) => total + payment.price, 0);
+
+			const result = await paymentCollection
+				.aggregate([
+					{
+						$group: {
+							_id: null,
+							totalRevenue: {
+								$sum: "$price",
+							},
+						},
+					},
+				])
+				.toArray();
+
+			const revenue = result.length > 0 ? result[0].totalRevenue : 0;
+
+			res.send({
+				users,
+				menuItems,
+				orders,
+				revenue,
+			});
+		});
+
+		// using aggregate pipeline
+		app.get("/order-stats", verifyToken, verifyAdmin, async (req, res) => {
+			const result = await paymentCollection
+				.aggregate([
+					{
+						$unwind: "$menuItemIds",
+					},
+					{
+						$lookup: {
+							from: "menu",
+							localField: "menuItemIds",
+							foreignField: "_id",
+							as: "menuItems",
+						},
+					},
+					{
+						$unwind: "$menuItems",
+					},
+					{
+						$group: {
+							_id: "$menuItems.category",
+							quantity: { $sum: 1 },
+							revenue: { $sum: "$menuItems.price" },
+						},
+					},
+					{
+						$project: {
+							_id: 0,
+							category: "$_id",
+							quantity: "$quantity",
+							revenue: "$revenue",
+						},
+					},
+				])
+				.toArray();
+
+			res.send(result);
 		});
 
 		// Send a ping to confirm a successful connection
